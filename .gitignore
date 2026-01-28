@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environments
+.env
+.venv
+venv/
+
+# AutoGluon
+AutogluonModels/
+*.log
+
+# HuggingFace / Chronos
+.cache/
+.huggingface/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db

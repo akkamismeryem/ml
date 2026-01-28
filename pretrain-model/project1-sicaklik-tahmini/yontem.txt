@@ -1,0 +1,166 @@
+Veri setlerimiz aylik
+Parametrelerimiz: ort. sicaklik, yagis, nispi nem, buharlasma.
+Amacimiz: time series forecasting (regresyon) -yani burada önümüzdeki ayin sonrasını tahmin etmek-
+Bulduğum, kullanabileceğim pretrain modellerim: 
+
+1.PatchTST -based Transformer-
+-zaman serisi için tasarlanmış bir premodel.
+-genellikle climate, energy, weather konularında kullanılıyor.
+
+2.TS2Vec 
+-self-supervised pretrained 
+-bu modelle karşılaştırma yapılıyor
+
+3.Chronous modeli - amazon 
+- ChronosV1
+- Chronos2
+------------------------------------------------------------------------------
+
+1.Plan 
+
+
+1. KAYNAK GÖREVİ TANIMLAMA
+Kaynak görev olarak, çok sayıda farklı alandan zaman serisi içeren ve genel zamansal örüntüleri öğrenmiş ön eğitimli Chronos modeli kullanılmıştır.
+2. VERİ TOPLAMA VE HAZIRLIGI
+Veriler düzenlenir, nitelik seçimi ve ölçeklendirme yapılır:
+Hedef istasyona ait aylık sıcaklık, yağış, nem ve buharlaşma verileri kullanılmış; ölçeklendirme ve nitelik seçimi uygulanmıştır.
+3.ÖN EGİTİM YAPMA
+Kaynak verilerle modeli eğiterek bir başlangıç noktası oluşturulur
+Bu çalışmada, ön eğitim aşaması için sıfırdan model eğitimi yerine, geniş kapsamlı zaman serileri üzerinde önceden eğitilmiş Chronos modeli kullanılmıştır.
+-> hazır pretrain model
+4.MODELİ YENİDEN EGİTME(FİNET UNE)
+Model, hedef iklim verileri üzerinde yeniden eğitilir, hiperparametreler ayarlanır
+-1.zero/shot yöntemi: 
+-2.finetune yöntemi:
+
+
+bunlar icin amazon Chronos paketi kurma:
+pip install pandas numpy scikit-learn torch transformers chronos-forecasting
+
+Testte walk-forward (her ay için 1 ay sonrası) tahmin yapacak
+Sonunda MAE/RMSE basacak
+
+Her test ayında tahmin yap
+
+Sonra gerçek test değerini geçmişe ekle
+
+Bir sonraki ayı tahmin ederken model “daha fazla geçmiş” görsün
+
+1 ay sonrası tahmin var (prediction_length=1)
+test boyunca tek tek ilerleme var (walk-forward)
+
+SONUÇLARIM
+----------
+ZERO-SHOT Chronos
+MAE : 1.8895957920424364
+RMSE: 2.4247276439128638
+
+“Ön eğitimli Chronos modeli, 
+hedef veri üzerinde yeniden eğitilmeden (zero-shot) uygulanmış 
+ve tahmin performansı değerlendirilmiştir.”
+
+BASELINE Naive
+MAE : 4.981481481481482
+RMSE: 5.720641629591218
+
+“Karşılaştırma amacıyla, herhangi bir öğrenme içermeyen ve 
+bir önceki zaman adımını 
+tahmin olarak kullanan naive tahmin yöntemi de uygulanmıştır.”
+
+LSTM (scratch) BASELINE
+MAE : 2.0103373527526855
+RMSE: 2.5596723556518555
+
+"Ön eğitimli Chronos modeli, 
+hedef veri üzerinde yeniden eğitilmeden (zero-shot) uygulanmış 
+ve MAE=1.787, RMSE=2.368 elde edilmiştir. Aynı veri bölünmesiyle 
+sıfırdan eğitilen LSTM modeli MAE=2.010, RMSE=2.560 üretmiştir. Bu sonuçlar,
+ ön eğitimli modelin aylık sıcaklık tahmininde 
+ daha düşük hata verdiğini göstermektedir."
+
+TCN (scratch) BASELINE
+MAE : 2.0478036403656006
+RMSE: 2.681614398956299
+
+“Ön eğitimli Chronos modeli, hedef veri üzerinde 
+yeniden eğitilmeden (zero-shot) uygulanmış ve 
+tüm baseline modellere kıyasla daha düşük hata değerleri üretmiştir. 
+Sıfırdan eğitilen LSTM ve TCN modellerine göre 
+MAE ve RMSE metriklerinde belirgin bir iyileşme sağlanmıştır. 
+Bu sonuçlar, geniş kapsamlı verilerle önceden eğitilmiş modellerin 
+aylık iklim tahminlerinde avantaj sunduğunu göstermektedir.”
+
+yol: AutoGluon-TimeSeries ile Chronos-2 fine-tune.
+-> pip install -U "autogluon.timeseries>=1.5"
+
+Chronos-2 Fine-Tuned SONUÇLAR
+MAE : 1.5953910932358768
+RMSE: 2.038974449614147
+
+“Ön eğitimli Chronos modeli zero-shot olarak uygulandığında 
+MAE=1.787, RMSE=2.368 elde edilmiştir. 
+Hedef istasyon verileri üzerinde yapılan 
+ince ayar (fine-tuning) sonrası Chronos-2 modeli 
+MAE=1.595 ve RMSE=2.039 değerlerine düşmüştür. 
+Bu iyileşme, önceden öğrenilmiş temsillerin 
+hedef iklim verisine aktarılmasının tahmin performansını 
+artırdığını göstermektedir. 
+Ayrıca fine-tuned Chronos-2 modeli, 
+sıfırdan eğitilen LSTM ve TCN baselinelarına göre daha düşük hata üretmiştir.”
+
+“Fine-tuning aşamasında Chronos-2 
+modelinin tercih edilmesinin temel nedeni,
+ modelin ön eğitimli yapısını koruyarak hedef
+  istasyon verilerine uyum sağlayabilmesi ve
+   bu sayede zero-shot ve sıfırdan eğitilen
+    modellere kıyasla daha yüksek tahmin doğruluğu sunmasıdır.”
+
+“Fine-tuning aşamasında veri, 
+item_id-timestamp-target formatında 
+AutoGluon TimeSeriesDataFrame yapısına dönüştürülmüş; 
+Chronos-2 modeli fine_tune=True 
+parametresi ile ön eğitimli ağırlıklardan başlatılarak
+ hedef veriler üzerinde sınırlı süre (time_limit=300) ile yeniden eğitilmiştir.
+  Ardından test döneminde walk-forward stratejisi ile
+   1-adım tahminler üretilmiş ve MAE/RMSE metrikleri hesaplanmıştır.”
+
+
+=== HİPERPARAMETRE OPTİMİZASYONU SONUÇLARI ===
+ time_limit        model      MAE     RMSE
+        600 Chronos2T600 1.586115 2.037470
+        300 Chronos2T300 1.594994 2.039181
+
+
+EN İYİ AYAR:
+time_limit=600 | model=Chronos2T600 | MAE=1.5861 | RMSE=2.0375
+
+“Hiperparametre araması kapsamında 
+time_limit değeri artırıldığında modelin hatası azalmış; 
+en iyi performans time_limit=600 sn ayarında elde edilmiştir
+ (MAE=1.586, RMSE=2.037).”
+
+---------------------------------------------------------------->
+->
+
+YAĞIŞ - Multivariate Chronos2 Fine-Tuned
+Model: Chronos2MV_FT
+MAE : 17.729619106484783
+RMSE: 27.019017572196415
+
+Zero-shot Chronos (tek değişken, yağış): MAE 21.3259, RMSE 32.0320
+Naive: MAE 27.1685, RMSE 40.1216
+
+"Yağış değişkeni, sıcaklığa kıyasla daha yüksek varyans 
+ve uç değerler içerdiğinden tek değişkenli 
+tahmin senaryosunda hata değerleri daha yüksek gözlenmiştir. 
+Bu nedenle yağış tahmininde çok değişkenli yaklaşım 
+tercih edilerek sıcaklık, nispi nem ve buharlaşma geçmiş 
+değerleri model girdisine eklenmiş; ayrıca 
+Chronos-2 modeli hedef veri üzerinde fine-tuning ile yeniden eğitilmiştir. 
+Sonuç olarak multivariate fine-tuned Chronos-2 modeli 
+(MAE=17.73, RMSE=27.02), zero-shot Chronos modeline 
+(MAE=21.33, RMSE=32.03) ve naive baseline’a (MAE=27.17, RMSE=40.12) 
+göre daha düşük hata üretmiştir. 
+Bu durum, yardımcı iklim değişkenlerinin ve aktarım öğrenmesi 
+ile yapılan ince ayarın yağış tahmin performansını 
+anlamlı şekilde artırdığını göstermektedir."
