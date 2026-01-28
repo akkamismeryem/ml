@@ -1,10 +1,12 @@
 # Machine Learning Workspace
 
-Bu repo, farklı makine öğrenmesi ve derin öğrenme
-projelerini barındıran kişisel bir çalışma alanıdır.
+This repo is a personal workspace that hosts different machine learning and deep learning projects.
 
-## İçerik
+## Contents
 - pretrain-model/
-  - Zaman serisi tahmini
+  - Time series forecast
   - Transfer learning
-  - Zero-shot ve fine-tuning
+  - Zero-shot and fine-tuning
+
+
+  
